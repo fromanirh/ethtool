@@ -1,6 +1,6 @@
-module github.com/mdlayher/ethtool
+module github.com/fromanirh/ethtool
 
-go 1.15
+go 1.17
 
 require (
 	github.com/google/go-cmp v0.5.7
