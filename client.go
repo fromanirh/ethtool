@@ -246,5 +246,35 @@ func (c *Client) SetWakeOnLAN(wol WakeOnLAN) error {
 	return c.c.SetWakeOnLAN(wol)
 }
 
+// ChannelInfo contains channel information for an Ethernet interface.
+// The usual kernel name is "Channels", but "Channelss() ([]*Channels, error)
+// would read badly
+type ChannelInfo struct {
+	Interface   Interface
+	MaxRx       int
+	MaxTx       int
+	MaxOther    int
+	MaxCombined int
+	Rx          int
+	Tx          int
+	Other       int
+	Combined    int
+}
+
+// ChannelInfos fetches ChannelInfo structures for each ethtool-supported interface
+// on this system.
+func (c *Client) ChannelInfos() ([]*ChannelInfo, error) {
+	return c.c.ChannelInfos()
+}
+
+// ChannelInfo fetches ChannelInfo data for the specified Interface.
+//
+// If the requested device does not exist or is not supported by the ethtool
+// interface, an error compatible with errors.Is(err, os.ErrNotExist) will be
+// returned.
+func (c *Client) ChannelInfo(ifi Interface) (*ChannelInfo, error) {
+	return c.c.ChannelInfo(ifi)
+}
+
 // Close cleans up the Client's resources.
 func (c *Client) Close() error { return c.c.Close() }

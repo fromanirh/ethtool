@@ -250,6 +250,42 @@ func (wol WakeOnLAN) encode(ae *netlink.AttributeEncoder) {
 	})
 }
 
+// ChannelInfos fetches channel informations for a single ethtool-supported interface.
+func (c *client) ChannelInfos() ([]*ChannelInfo, error) {
+	return c.channelInfo(netlink.Dump, Interface{})
+}
+
+// ChannelInfo fetches channel information about a single ethtool-supported interface.
+func (c *client) ChannelInfo(ifi Interface) (*ChannelInfo, error) {
+	cif, err := c.channelInfo(0, ifi)
+	if err != nil {
+		return nil, err
+	}
+
+	if l := len(cif); l != 1 {
+		panicf("ethtool: unexpected number of Channels messages for request index: %d, name: %q: %d",
+			ifi.Index, ifi.Name, l)
+	}
+
+	return cif[0], nil
+}
+
+// channelInfo is the shared logic for Client.ChannelInfo(s).
+func (c *client) channelInfo(flags netlink.HeaderFlags, ifi Interface) ([]*LinkInfo, error) {
+	msgs, err := c.get(
+		unix.ETHTOOL_A_CHANNELS_HEADER,
+		unix.ETHTOOL_MSG_CHANNELS_GET,
+		flags,
+		ifi,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return parseChannelInfo(msgs)
+}
+
 // get performs a request/response interaction with ethtool netlink.
 func (c *client) get(
 	header uint16,
@@ -560,6 +596,50 @@ func parseInterface(ifi *Interface) func(*netlink.AttributeDecoder) error {
 		}
 		return nil
 	}
+}
+
+// parseChannelInfo parses ChannelInfo structures from a slice of generic netlink
+// messages.
+func parseChannelInfo(msgs []genetlink.Message) ([]*ChannelInfo, error) {
+	cis := make([]*ChannelInfo, 0, len(msgs))
+	for _, m := range msgs {
+		ad, err := netlink.NewAttributeDecoder(m.Data)
+		if err != nil {
+			return nil, err
+		}
+
+		var ci ChannelInfo
+		for ad.Next() {
+			switch ad.Type() {
+			case unix.ETHTOOL_A_CHANNELS_HEADER:
+				ad.Nested(parseInterface(&li.Interface))
+			case unix.ETHTOOL_A_CHANNELS_RX_MAX:
+				li.MaxRx = int(ad.Uint32())
+			case unix.ETHTOOL_A_CHANNELS_TX_MAX:
+				li.MaxTx = int(ad.Uint32())
+			case unix.ETHTOOL_A_CHANNELS_OTHER_MAX:
+				li.MaxOther = int(ad.Uint32())
+			case unix.ETHTOOL_A_CHANNELS_COMBINED_MAX:
+				li.MaxCombined = int(ad.Uint32())
+			case unix.ETHTOOL_A_CHANNELS_RX_COUNT:
+				li.Rx = int(ad.Uint32())
+			case unix.ETHTOOL_A_CHANNELS_TX_COUNT:
+				li.Tx = int(ad.Uint32())
+			case unix.ETHTOOL_A_CHANNELS_OTHER_COUNT:
+				li.Other = int(ad.Uint32())
+			case unix.ETHTOOL_A_CHANNELS_COMBINED_COUNT:
+				li.Combined = int(ad.Uint32())
+			}
+		}
+
+		if err := ad.Err(); err != nil {
+			return nil, err
+		}
+
+		cis = append(cis, &ci)
+	}
+
+	return cis, nil
 }
 
 func panicf(format string, a ...interface{}) {
