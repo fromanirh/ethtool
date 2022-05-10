@@ -271,7 +271,7 @@ func (c *client) ChannelInfo(ifi Interface) (*ChannelInfo, error) {
 }
 
 // channelInfo is the shared logic for Client.ChannelInfo(s).
-func (c *client) channelInfo(flags netlink.HeaderFlags, ifi Interface) ([]*LinkInfo, error) {
+func (c *client) channelInfo(flags netlink.HeaderFlags, ifi Interface) ([]*ChannelInfo, error) {
 	msgs, err := c.get(
 		unix.ETHTOOL_A_CHANNELS_HEADER,
 		unix.ETHTOOL_MSG_CHANNELS_GET,
@@ -612,23 +612,23 @@ func parseChannelInfo(msgs []genetlink.Message) ([]*ChannelInfo, error) {
 		for ad.Next() {
 			switch ad.Type() {
 			case unix.ETHTOOL_A_CHANNELS_HEADER:
-				ad.Nested(parseInterface(&li.Interface))
+				ad.Nested(parseInterface(&ci.Interface))
 			case unix.ETHTOOL_A_CHANNELS_RX_MAX:
-				li.MaxRx = int(ad.Uint32())
+				ci.MaxRx = int(ad.Uint32())
 			case unix.ETHTOOL_A_CHANNELS_TX_MAX:
-				li.MaxTx = int(ad.Uint32())
+				ci.MaxTx = int(ad.Uint32())
 			case unix.ETHTOOL_A_CHANNELS_OTHER_MAX:
-				li.MaxOther = int(ad.Uint32())
+				ci.MaxOther = int(ad.Uint32())
 			case unix.ETHTOOL_A_CHANNELS_COMBINED_MAX:
-				li.MaxCombined = int(ad.Uint32())
+				ci.MaxCombined = int(ad.Uint32())
 			case unix.ETHTOOL_A_CHANNELS_RX_COUNT:
-				li.Rx = int(ad.Uint32())
+				ci.Rx = int(ad.Uint32())
 			case unix.ETHTOOL_A_CHANNELS_TX_COUNT:
-				li.Tx = int(ad.Uint32())
+				ci.Tx = int(ad.Uint32())
 			case unix.ETHTOOL_A_CHANNELS_OTHER_COUNT:
-				li.Other = int(ad.Uint32())
+				ci.Other = int(ad.Uint32())
 			case unix.ETHTOOL_A_CHANNELS_COMBINED_COUNT:
-				li.Combined = int(ad.Uint32())
+				ci.Combined = int(ad.Uint32())
 			}
 		}
 
